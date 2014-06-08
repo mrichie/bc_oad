@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="org.qingyue.oad"
+    version="0.1.0">
+
+    <name>Oad Service</name>
+        <description>Oad Service plugin based on BC.js</description>
+        <license>Apache 2.0</license>
+        <keywords>OAD, BLE</keywords>
+        <engines>
+        <engine name="cordova" version=">=3.0.0" />
+    </engines>
+
+    <js-module src="www/oad.js" name="oad">
+      <merges target="navigator.oad" />
+    </js-module>
+
+    <dependency id="org.bcsphere.bluetooth" url="https://github.com/bcsphere/bluetooth.git"/>
+
+
+  <!-- ios -->
+  <platform name="ios">
+    <config-file target="config.xml" parent="/*">
+      <feature name="BCOad">
+        <param name="ios-package" value="BCOad"/>
+      </feature>
+    </config-file>
+
+    <header-file src="src/ios/BCOad.h" />
+    <source-file src="src/ios/BCOac.m" />
+    <asset src="src/bc_oad.js" target ="bc_oad.js"/>
+    <framework src="CoreBluetooth.framework" weak="true" />
+  </platform>
+</plugin>
