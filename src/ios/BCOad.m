@@ -3,7 +3,7 @@
 //  Created by Richie on 2014-6-8.
 //
 
-#import "BCIOad.h"
+#import "BCOad.h"
 
 #define EVENT_NAME @"eventName"
 
