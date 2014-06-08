@@ -28,7 +28,7 @@
     </config-file>
 
     <header-file src="src/ios/BCOad.h" />
-    <source-file src="src/ios/BCOac.m" />
+    <source-file src="src/ios/BCOad.m" />
     <asset src="src/bc_oad.js" target ="bc_oad.js"/>
     <framework src="CoreBluetooth.framework" weak="true" />
   </platform>
