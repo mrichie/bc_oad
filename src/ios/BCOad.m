@@ -7,7 +7,7 @@
 
 #define EVENT_NAME @"eventName"
 
-@implementation BCIBeacon
+@implementation BCOad
 
 - (void)pluginInitialize{
     [super pluginInitialize];
@@ -34,12 +34,12 @@
 }
 
 -(void) makeConfigurationForProfile {
-    if (!self.setupData) self.setupData = [[NSMutableDictionary alloc] init];
-    // Append the UUID to make it easy for app
-    [self.setupData setValue:@"0xF000FFC0-0451-4000-B000-000000000000" forKey:@"OAD Service UUID"];
-    [self.setupData setValue:@"0xF000FFC1-0451-4000-B000-000000000000" forKey:@"OAD Image Notify UUID"];
-    [self.setupData setValue:@"0xF000FFC2-0451-4000-B000-000000000000" forKey:@"OAD Image Block Request UUID"];
-    NSLog(@"%@",self.setupData);
+//    if (!self.setupData) self.setupData = [[NSMutableDictionary alloc] init];
+//    // Append the UUID to make it easy for app
+//    [self.setupData setValue:@"0xF000FFC0-0451-4000-B000-000000000000" forKey:@"OAD Service UUID"];
+//    [self.setupData setValue:@"0xF000FFC1-0451-4000-B000-000000000000" forKey:@"OAD Image Notify UUID"];
+//    [self.setupData setValue:@"0xF000FFC2-0451-4000-B000-000000000000" forKey:@"OAD Image Block Request UUID"];
+//    NSLog(@"%@",self.setupData);
 }
 
 -(void) configureProfile {
@@ -62,8 +62,13 @@
 }
 
 - (void) uploadImage:(CDVInvokedUrlCommand *)command{
-    NSString* filename = [command.arguments objectAtIndex:0];
-    self.imageFile = [NSData dataWithContentsOfFile:filename];
+    CDVPluginResult* pluginResult = nil;
+
+    NSString* filename = [[command.arguments objectAtIndex:0] valueForKey:@"filename"];
+    
+    NSString *fullPath = [self getFWImageFullPath:filename];
+    
+    self.imageFile = [NSData dataWithContentsOfFile:fullPath];
 
     self.inProgramming = YES;
     self.canceled = NO;
@@ -73,7 +78,7 @@
     uint8_t requestData[OAD_IMG_HDR_SIZE + 2 + 2]; // 12Bytes
 
     for(int ii = 0; ii < 20; ii++) {
-        NSLog(@"%02hhx",imageFileData[ii]);
+        NSLog(@"%02hhx", imageFileData[ii]);
     }
 
     img_hdr_t imgHeader;
@@ -100,12 +105,23 @@
 
     // [BLEUtility writeCharacteristic:self.d.p sCBUUID:sUUID cCBUUID:cUUID data:[NSData dataWithBytes:requestData length:OAD_IMG_HDR_SIZE + 2 + 2]];
 
+//    NSMutableDictionary *jsDict = [[NSMutableDictionary alloc] init];
+    NSData* jsdata = [NSData dataWithBytes:(const void *)requestData length:12];
+//    [jsDict setValue:[NSJSONSerialization JSONObjectWithData:jsdata options:NSJSONReadingAllowFragments error:nil] forKey:@"requestData"];
+
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArrayBuffer:jsdata];
+    [pluginResult setKeepCallbackAsBool:TRUE];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+
     self.nBlocks = imgHeader.len / (OAD_BLOCK_SIZE / HAL_FLASH_WORD_SIZE);
     self.nBytes = imgHeader.len * HAL_FLASH_WORD_SIZE;
     self.iBlocks = 0;
     self.iBytes = 0;
 
-    [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(programmingTimerTick:) userInfo:nil repeats:NO];
+    NSMutableDictionary *myDictionary = [[NSMutableDictionary alloc] init];
+    [myDictionary setObject:command forKey:@"command"];
+    NSLog(@"dic : %@", myDictionary);
+    [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:NO];
 
 }
 
@@ -115,6 +131,9 @@
         return;
     }
 
+    CDVPluginResult* pluginResult = nil;
+    CDVInvokedUrlCommand *command = [[timer userInfo] objectForKey:@"command"];
+    
     unsigned char imageFileData[self.imageFile.length];
     [self.imageFile getBytes:imageFileData];
 
@@ -129,39 +148,48 @@
 
         memcpy(&requestData[2] , &imageFileData[self.iBytes], OAD_BLOCK_SIZE);
 
+        //NSLog(@"%s", requestData);
         // CBUUID *sUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Service UUID"]];
         // CBUUID *cUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Image Block Request UUID"]];
 
         // [BLEUtility writeNoResponseCharacteristic:self.d.p sCBUUID:sUUID cCBUUID:cUUID data:[NSData dataWithBytes:requestData length:2 + OAD_BLOCK_SIZE]];
 
+//        NSMutableDictionary *jsDict = [[NSMutableDictionary alloc] init];
+        NSData* jsdata = [NSData dataWithBytes:(const void *)requestData length:18];
+//        [jsDict setValue:[NSJSONSerialization JSONObjectWithData:jsdata options:NSJSONReadingAllowFragments error:nil] forKey:@"requestData"];
+        
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArrayBuffer:jsdata];
+        [pluginResult setKeepCallbackAsBool:TRUE];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        
         self.iBlocks++;
         self.iBytes += OAD_BLOCK_SIZE;
 
         if(self.iBlocks == self.nBlocks) {
             self.inProgramming = NO;
-            return;
+            //return;
         }
         else {
-            if (ii == 3)[NSTimer scheduledTimerWithTimeInterval:0.09 target:self selector:@selector(programmingTimerTick:) userInfo:nil repeats:NO];
+            NSMutableDictionary *myDictionary = [[NSMutableDictionary alloc] init];
+            [myDictionary setObject:command forKey:@"command"];
+            if (ii == 3)[NSTimer scheduledTimerWithTimeInterval:0.09 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:NO];
         }
     }
 
     float secondsPerBlock = 0.09 / 4;
     float secondsLeft = (float)(self.nBlocks - self.iBlocks) * secondsPerBlock;
+    
+    NSLog(@"secondsPerBlock : %f", secondsPerBlock);
+    NSLog(@"secondsLeft: %f", secondsLeft);
+    NSLog(@"inProgramming %hhd", self.inProgramming);
+    
+    NSMutableDictionary *jsDict = [[NSMutableDictionary alloc] init];
+    [jsDict setValue:[NSNumber numberWithFloat:secondsLeft] forKey:@"secondsLeft"];
+    [jsDict setValue:[NSNumber numberWithFloat:self.inProgramming] forKey:@"inProgramming"];
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:jsDict];
+    [pluginResult setKeepCallbackAsBool:TRUE];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 
-}
-
--(void) didUpdateValueForProfile:(CBCharacteristic *)characteristic {
-    if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Image Notify UUID"]]]) {
-        if (self.imgVersion == 0xFFFF) {
-            unsigned char data[characteristic.value.length];
-            [characteristic.value getBytes:&data];
-            self.imgVersion = ((uint16_t)data[1] << 8 & 0xff00) | ((uint16_t)data[0] & 0xff);
-            NSLog(@"self.imgVersion : %04hx",self.imgVersion);
-        }
-        NSLog(@"OAD Image notify : %@",characteristic.value);
-
-    }
 }
 
 -(NSMutableArray *) findFWFiles {
@@ -173,7 +201,7 @@
     NSError *error;
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:publicDocumentsDir error:&error];
 
-
+    NSLog(@"%@", files);
     if (files == nil) {
         NSLog(@"Could not find any firmware files ...");
         return FWFiles;
@@ -191,22 +219,30 @@
 - (void) getFWFiles:(CDVInvokedUrlCommand *)command{
     CDVPluginResult* pluginResult = nil;
     NSMutableArray *files = [self findFWFiles];
-    if(files == nil){
+    NSLog(@"%@", files);
+    if([files count] == 0){
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
     }else{
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:'exist'];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"exist"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void) validateImage:(CDVInvokedUrlCommand *)command{
     CDVPluginResult* pluginResult = nil;
-    NSString* filename = [command.arguments objectAtIndex:0];
-    self.imageFile = [NSData dataWithContentsOfFile:filename];
-    NSLog(@"Loaded firmware \"%@\"of size : %d", filename, self.imageFile.length);
-    if ([self isCorrectImage])
+    NSString* filename = [[command.arguments objectAtIndex:0] valueForKey:@"filename"];
+    NSLog(@"filename : %@", filename);
+    
+    NSString *fullPath = [self getFWImageFullPath:filename];
+    
+    self.imageFile = [NSData dataWithContentsOfFile:fullPath];
+    NSLog(@"Loaded firmware \"%@\"of size : %lu", filename, (unsigned long)self.imageFile.length);
+    if ([self isCorrectImage]){
+        NSLog(@"correct image");
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:filename];
+    }
     else {
+        NSLog(@"is not correct image");
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -219,15 +255,47 @@
     img_hdr_t imgHeader;
     memcpy(&imgHeader, &imageFileData[0 + OAD_IMG_HDR_OSET], sizeof(img_hdr_t));
 
+    uint16_t version = 0xFFFF;
+    NSLog(@"default img Version : %hu", version);
+    NSLog(@"current img Version : %hu", self.imgVersion);
     if ((imgHeader.ver & 0x01) != (self.imgVersion & 0x01)) return YES;
     return NO;
 }
 
+-(void) setImageType:(CDVInvokedUrlCommand *)command{
+    CDVPluginResult* pluginResult = nil;
+    NSString *hexString = [[command.arguments objectAtIndex:0] valueForKey:@"imgType"];
+
+    char const *chars = hexString.UTF8String;
+    NSUInteger charCount = strlen(chars);
+    if (charCount % 2 != 0) {
+        return ;
+    }
+    NSUInteger byteCount = charCount / 2;
+    uint8_t *bytes = malloc(byteCount);
+    for (int i = 0; i < byteCount; ++i) {
+        unsigned int value;
+        sscanf(chars + i * 2, "%2x", &value);
+        bytes[i] = value;
+    }
+    NSData *imgType = [NSData dataWithBytesNoCopy:bytes length:byteCount freeWhenDone:YES];
+    
+    NSLog(@"imgType : %@", imgType);
+    
+    unsigned char data[imgType.length];
+    [imgType getBytes:&data];
+    self.imgVersion = ((uint16_t)data[1] << 8 & 0xff00) | ((uint16_t)data[0] & 0xff);
+    NSLog(@"img Version : %hu", self.imgVersion);
+    NSLog(@"version type : %d", (self.imgVersion & 0x01));
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
 -(void) imageDetectTimerTick:(NSTimer *)timer {
     //IF we have come here, the image userID is B.
     NSLog(@"imageDetectTimerTick:");
-    CBUUID *sUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Service UUID"]];
-    CBUUID *cUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Image Notify UUID"]];
+//    CBUUID *sUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Service UUID"]];
+//    CBUUID *cUUID = [CBUUID UUIDWithString:[self.d.setupData valueForKey:@"OAD Image Notify UUID"]];
     unsigned char data = 0x01;
     NSLog(@" image detect timer ");
     // [BLEUtility writeCharacteristic:self.d.p sCBUUID:sUUID cCBUUID:cUUID data:[NSData dataWithBytes:&data length:1]];
@@ -258,6 +326,13 @@
     }else{
         return FALSE;
     }
+}
+
+- (NSString*)getFWImageFullPath:(NSString*)filename{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains (NSDocumentDirectory,NSUserDomainMask, YES);
+    NSString *publicDocumentsDir = [paths objectAtIndex:0];
+    NSString *fullPath = [publicDocumentsDir stringByAppendingPathComponent:filename];
+    return fullPath;
 }
 
 - (NSString*)parseStringFromJS:(NSArray*)commandArguments keyFromJS:(NSString*)key{

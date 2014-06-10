@@ -15,10 +15,15 @@
 #define HI_UINT16(a) (((a) >> 8) & 0xff)
 #define LO_UINT16(a) ((a) & 0xff)
 
-@interface BCIOad : CDVPlugin
+@interface BCOad : CDVPlugin
+{
+    BOOL isVariableInit;
+}
+
 - (void)validateImage:(CDVInvokedUrlCommand*)command;
 - (void)uploadImage:(CDVInvokedUrlCommand*)command;
 - (void)getFWFiles:(CDVInvokedUrlCommand*)command;
+- (void)setImageType:(CDVInvokedUrlCommand*)command;
 
 @property (strong,nonatomic) NSData *imageFile;
 
@@ -35,7 +40,6 @@
 -(void) makeConfigurationForProfile;
 -(void) configureProfile;
 -(void) deconfigureProfile;
--(void) didUpdateValueForProfile:(CBCharacteristic *)characteristic;
 
 -(void) programmingTimerTick:(NSTimer *)timer;
 -(void) imageDetectTimerTick:(NSTimer *)timer;

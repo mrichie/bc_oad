@@ -24,21 +24,25 @@ var interval_index = null;
  */
 var oad = {
 
-        uploadImage : function(callback, errorFunc, filename){
-                cordova.exec(callback, errorFunc, "BCOad", "uploadImage", [{"filename": filename}]);
-        },
+    uploadImage : function(callback, errorFunc, filename){
+        cordova.exec(callback, errorFunc, "BCOad", "uploadImage", [{"filename": filename}]);
+    },
 
-        validateImage : function(callback, errorFunc, filename){
-                cordova.exec(callback, errorFunc, "BCOad", "validateImage", [{"filename": filename}]);
-        },
+    validateImage : function(callback, errorFunc, filename){
+        cordova.exec(callback, errorFunc, "BCOad", "validateImage", [{"filename": filename}]);
+    },
 
-        getFWFiles : function(callback, errorFunc){
-                cordova.exec(callback, errorFunc, "BCOad", "getFWFiles", []);
-        },
+    getFWFiles : function(callback, errorFunc){
+        cordova.exec(callback, errorFunc, "BCOad", "getFWFiles", []);
+    },
 
-        addEventListener : function(eventName, callback, errorFunc){
-                cordova.exec(callback, errorFunc, "BCOad", "addEventListener", [{"eventName":eventName}]);
-        },
+    setImageType: function(callback, errorFunc, imgType){
+        cordova.exec(callback, errorFunc, "BCOad", "setImageType", [{'imgType': imgType}]);
+    },
+
+    addEventListener : function(eventName, callback, errorFunc){
+        cordova.exec(callback, errorFunc, "BCOad", "addEventListener", [{"eventName": eventName}]);
+    },
 };
 module.exports = oad;
 
