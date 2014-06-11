@@ -29,26 +29,6 @@
 
         pluginInitialize : function(){
             BC.bluetooth.UUIDMap[this.serviceUUID] = BC.OadService;
-            this.curImgType = null;
-        },
-
-        uploadImage: function(imgType){
-            BC.OadManager.UploadImage(function(data){
-                if(data.constructor == ArrayBuffer){
-                    var dataView = new DataView(data);
-                    writeValue = "0x" + dataView.getUint16(1).toString(16).toUpperCase();
-                    console.log("writeValue: " + writeValue);
-                    // this.getCharacteristicByUUID(
-                    //     this.imageNotifyUUID)[0].write('hex',
-                    //                                    writeValue,
-                    //                                    function(){},
-                    //                                    function(){});
-                }else{
-                    // show progress by data.secondsLeft
-                };
-            }, function(msg){
-                console.log(msg);
-            }, 'Image' + imgType + '.bin');
         }
 
     });
@@ -71,40 +51,72 @@
 
     var OadService = BC.OadService = BC.Service.extend({
 
-        serviceUUID: 'F000FFC0-0451-4000-B000-000000000000',
+        imageNotifyUUID: 'f000ffc1-0451-4000-b000-000000000000',
 
-        imageNotifyUUID: 'F000FFC1-0451-4000-B000-000000000000',
+        imageBlockRequestUUID: 'f000ffc2-0451-4000-b000-000000000000',
 
-        imageBlockRequestUUID: 'F000FFC2-0451-4000-B000-000000000000',
+        imgVersion: '0xFFFF',
+
+        curImgType: null,
 
         configureProfile: function(){
             successFunc = this.writeSuccess;
             errorFunc = this.writeError;
-            writeType = 'hex';
-            writeValue = '0x00';
-            // 0a00007c41414141
-            // 0b00007c42424242
-            console.log(this.imageNotifyUUID);
-            this.getCharacteristicByUUID(this.imageNotifyUUID)[0].subscribe(function(data){
-                console.log(data.value.getHexString());
-                BC.OadManager.data = data.value;
-                imgHdr = new Uint16Array(data.value.value);
-                console.log(imgHdr);
-                imgType = imgHdr[0] & 0x01 ? 'B' : 'A';
-                console.log(imgType);
-                BC.OadManager.curImgType = imgType;
-                BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
+            me = this;
+            me.getCharacteristicByUUID(me.imageNotifyUUID)[0].subscribe(function(data){
+                if(me.imgVersion == '0xFFFF'){
+                    imgHdr = new Uint16Array(data.value.value);
+                    imgType = imgHdr[0] & 0x01 ? 'B' : 'A';
+                    me.curImgType = imgType;
+                    BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
+                    me.imgVersion = data.value.getHexString();
+                };
             });
 
-            this.getCharacteristicByUUID(this.imageNotifyUUID)[0].write(writeType,
-                                                                        writeValue,
+            me.getCharacteristicByUUID(me.imageNotifyUUID)[0].write('hex',
+                                                                        '0x00',
                                                                         successFunc,
                                                                         errorFunc);
-
+            window.setTimeout(function(){
+                me.getCharacteristicByUUID(me.imageNotifyUUID)[0].write('hex',
+                                                                            '0x01',
+                                                                            successFunc,
+                                                                            errorFunc);
+            }, 1500);
         },
 
-        deconfigureProfile: function(){
-
+        uploadImage: function(device, successCallBack, errorCallBack){
+            if(this.curImgType == null)
+                return;
+            if(this.curImgType == 'A')
+                var imgType = 'B';
+            else
+                var imgType = 'A';
+            service = this;
+            BC.OadManager.UploadImage(function(data){
+                if(data.constructor == ArrayBuffer){
+                    writeValue = data.getHexString();
+                    if(data.byteLength == 12){
+                        service.getCharacteristicByUUID(
+                            service.imageNotifyUUID)[0].write('hex',
+                                                              writeValue,
+                                                              function(){ console.log('n w ok')},
+                                                              function(){ console.log('b w error')});
+                    }
+                    else{
+                        service.getCharacteristicByUUID(
+                            service.imageBlockRequestUUID)[0].write('hex',
+                                                              writeValue,
+                                                              function(){ console.log('b w ok')},
+                                                              function(){ console.log('b w error')});
+                    };
+                }else{
+                    // show progress by data.secondsLeft
+                    successCallBack(data);
+                };
+            }, function(msg){
+                errorCallBack(msg);
+            }, 'Image' + imgType + '.bin');
         },
 
         writeSuccess : function(){
@@ -119,3 +131,18 @@
 
 
 })();
+
+
+ArrayBuffer.prototype.getHexString = function(){
+    var length = this.byteLength;
+    var dv = new DataView(this);
+    var result = "";
+    for (var i= 0; i < length; i++) {
+        if(dv.getUint8(i) < 16){
+            result += '0' + dv.getUint8(i).toString(16);
+        }else{
+            result += dv.getUint8(i).toString(16);
+        }
+    }
+    return result;
+};
