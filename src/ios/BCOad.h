@@ -34,15 +34,9 @@
 @property BOOL canceled;
 @property BOOL inProgramming;
 @property BOOL start;
-@property (nonatomic,retain) NSTimer *imageDetectTimer;
 @property uint16_t imgVersion;
 
--(void) makeConfigurationForProfile;
--(void) configureProfile;
--(void) deconfigureProfile;
-
 -(void) programmingTimerTick:(NSTimer *)timer;
--(void) imageDetectTimerTick:(NSTimer *)timer;
 
 -(NSMutableArray *) findFWFiles;
 
