@@ -18,6 +18,18 @@
 
     <dependency id="org.bcsphere.bluetooth" url="https://github.com/bcsphere/bluetooth.git"/>
 
+    <!-- android -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="BCOad">
+                <param name="android-package" value="org.qingyue.oad.BCOad"/>
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/org/qingyue/oad/BCOad.java" target-dir="src/org/qingyue/oad" />
+        <source-file src="src/android/org/qingyue/oad/utils/Conversion.java" target-dir="src/org/qingyue/oad/utils" />
+
+    </platform>
 
   <!-- ios -->
   <platform name="ios">
