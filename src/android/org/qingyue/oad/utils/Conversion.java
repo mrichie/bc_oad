@@ -32,7 +32,7 @@
   contact Texas Instruments Incorporated at www.TI.com
 
  **************************************************************************************************/
-package org.qingyue.bcoad.utils;
+package org.qingyue.oad.utils;
 
 import java.util.Formatter;
 

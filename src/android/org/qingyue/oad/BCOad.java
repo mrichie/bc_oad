@@ -1,7 +1,7 @@
-package org.qingyue.bcoad;
+package org.qingyue.oad;
 
 import org.bcsphere.bluetooth.tools.Tools;
-import org.qingyue.bcoad.utils.Conversion;
+import org.qingyue.oad.utils.Conversion;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
