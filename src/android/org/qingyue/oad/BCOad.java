@@ -1,4 +1,6 @@
 package org.qingyue.bcoad;
+
+import org.bcsphere.bluetooth.tools.Tools;
 import org.qingyue.bcoad.utils.Conversion;
 
 import org.apache.cordova.CallbackContext;
@@ -17,6 +19,10 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
 
 public class BCOad extends CordovaPlugin {
 
@@ -56,7 +62,6 @@ public class BCOad extends CordovaPlugin {
     private boolean mServiceOk = false;
     private boolean mProgramming = false;
     private int mEstDuration = 0;
-    private IntentFilter mIntentFilter;
 
     public BCOad() {
     }
@@ -66,9 +71,11 @@ public class BCOad extends CordovaPlugin {
 
     }
 
-    @Override
     public void setImageType(JSONArray json, CallbackContext callbackContext){
-        byte [] value = [];
+        String paramsKey = "imgType";
+        String hexstring = Tools.getData(json, paramsKey);
+        byte [] value = new byte[12];
+        Conversion.hexStringtoByte(hexstring, value);
         mTargImgHdr.ver = Conversion.buildUint16(value[1], value[0]);
         mTargImgHdr.imgType = ((mTargImgHdr.ver & 1) == 1) ? 'B' : 'A';
         mTargImgHdr.len = Conversion.buildUint16(value[3], value[2]);
@@ -79,7 +86,6 @@ public class BCOad extends CordovaPlugin {
         callbackContext.sendPluginResult(pluginResult);
     }
 
-    @Override
     public void uploadImage(JSONArray json, CallbackContext callbackContext){
         mProgramming = true;
 
@@ -106,12 +112,11 @@ public class BCOad extends CordovaPlugin {
         // Start the packet timer
         mTimer = null;
         mTimer = new Timer();
-        mTimerTask = new ProgTimerTask();
-        mTimerTask.setCommand(callbackContext);
+        mTimerTask = new ProgTimerTask(callbackContext);
         mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
     }
 
-    private void onBlockTimer(callbackContext) {
+    private void onBlockTimer(CallbackContext callbackContext) {
 
         if (mProgInfo.iBlocks < mProgInfo.nBlocks) {
             mProgramming = true;
@@ -124,6 +129,7 @@ public class BCOad extends CordovaPlugin {
             // Send block
             //mCharBlock.setValue(mOadBuffer);
             //boolean success = mLeService.writeCharacteristic(mCharBlock);
+            boolean success = true;
             JSONObject obj = new JSONObject();
             // transfer mOadBuffer
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
@@ -145,12 +151,12 @@ public class BCOad extends CordovaPlugin {
         mProgInfo.iTimeElapsed += PKT_INTERVAL;
 
         if (!mProgramming) {
-            runOnUiThread(new Runnable() {
-                    public void run() {
-                        displayStats();
-                        stopProgramming();
-                    }
-                });
+            // runOnUiThread(new Runnable() {
+            //         public void run() {
+            //             displayStats();
+            //             stopProgramming();
+            //         }
+            //     });
         }
     }
 
@@ -163,7 +169,7 @@ public class BCOad extends CordovaPlugin {
         mProgramming = false;
 
         if (mProgInfo.iBlocks == mProgInfo.nBlocks) {
-            Log.i(TAG, "Programming complete!\n")
+            Log.i(TAG, "Programming complete!\n");
         } else {
             Log.i(TAG, "Programming cancelled\n");
         }
@@ -181,27 +187,27 @@ public class BCOad extends CordovaPlugin {
 
         txt = String.format("Time: %d / %d sec", sec, mEstDuration);
         txt += String.format("    Bytes: %d (%d/sec)", mProgInfo.iBytes, byteRate);
-        Log.i(TAG, txt)
+        Log.i(TAG, txt);
     }
 
     private class ProgTimerTask extends TimerTask {
-        CallbackContext command;
+        protected CallbackContext cmd;
 
-        public setCommand(CallbackContext command) {
-            this.command = command;
+        public ProgTimerTask(CallbackContext command) {
+            this.cmd = command;
         }
 
         @Override
         public void run() {
             mProgInfo.mTick++;
             if (mProgramming) {
-                onBlockTimer(command);
+                onBlockTimer(cmd);
                 if ((mProgInfo.mTick % PKT_INTERVAL) == 0) {
-                    runOnUiThread(new Runnable() {
-                            public void run() {
-                                displayStats();
-                            }
-                        });
+                    // runOnUiThread(new Runnable() {
+                    //         public void run() {
+                    //             displayStats();
+                    //         }
+                    //     });
                 }
             }
         }

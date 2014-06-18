@@ -32,7 +32,7 @@
   contact Texas Instruments Incorporated at www.TI.com
 
  **************************************************************************************************/
-package ti.android.util;
+package org.qingyue.bcoad.utils;
 
 import java.util.Formatter;
 
