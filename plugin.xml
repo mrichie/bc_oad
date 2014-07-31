@@ -16,6 +16,10 @@
       <merges target="navigator.oad" />
     </js-module>
 
+    <js-module src="src/bc_oad.js" name="bc_oad">
+      <merges target="BC" />
+    </js-module>
+    
     <!--<dependency id="org.bcsphere.bluetooth" url="https://github.com/bcsphere/bluetooth.git"/> -->
 
     <!-- android -->
@@ -42,7 +46,7 @@
     <header-file src="src/ios/oad.h" />
     <header-file src="src/ios/BCOad.h" />
     <source-file src="src/ios/BCOad.m" />
-    <asset src="src/bc_oad.js" target ="bc_oad.js"/>
+    <!-- <asset src="src/bc_oad.js" target ="bc_oad.js"/> -->
     <framework src="CoreBluetooth.framework" weak="true" />
   </platform>
 </plugin>
