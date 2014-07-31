@@ -16,7 +16,7 @@
       <merges target="navigator.oad" />
     </js-module>
 
-    <dependency id="org.bcsphere.bluetooth" url="https://github.com/bcsphere/bluetooth.git"/>
+    <!--<dependency id="org.bcsphere.bluetooth" url="https://github.com/bcsphere/bluetooth.git"/> -->
 
     <!-- android -->
     <platform name="android">
