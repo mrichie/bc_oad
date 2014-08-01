@@ -1,4 +1,4 @@
-/*
+cordova.define("org.qingyue.oad.bc_oad", function(require, exports, module) { /*
  Copyright 2013-2014, QingYue Technology
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,7 +59,7 @@
 
         curImgType: null,
 
-        configureProfile: function(){
+        detectImage: function(cb){
             successFunc = this.writeSuccess;
             errorFunc = this.writeError;
             me = this;
@@ -68,8 +68,9 @@
                     imgHdr = new Uint16Array(data.value.value);
                     imgType = imgHdr[0] & 0x01 ? 'B' : 'A';
                     me.curImgType = imgType;
-                    BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
+                    //BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
                     me.imgVersion = data.value.getHexString();
+                    cb(me.curImgType, me.imgVersion);
                 };
             });
 
@@ -146,3 +147,4 @@ ArrayBuffer.prototype.getHexString = function(){
     }
     return result;
 };
+});
