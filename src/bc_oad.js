@@ -1,4 +1,4 @@
-cordova.define("org.qingyue.oad.bc_oad", function(require, exports, module) { /*
+/*
  Copyright 2013-2014, QingYue Technology
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -147,4 +147,3 @@ ArrayBuffer.prototype.getHexString = function(){
     }
     return result;
 };
-});
