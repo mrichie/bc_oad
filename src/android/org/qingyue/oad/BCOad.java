@@ -2,7 +2,6 @@ package org.qingyue.oad;
 
 import org.bcsphere.bluetooth.tools.Tools;
 import org.qingyue.oad.utils.Conversion;
-
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -63,12 +62,30 @@ public class BCOad extends CordovaPlugin {
     private boolean mProgramming = false;
     private int mEstDuration = 0;
 
+    private CallbackContext callbackContext;
+    
     public BCOad() {
     }
 
     @Override
-    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-
+	public boolean execute(String action, final JSONArray args, final CallbackContext cbContext) {
+    	callbackContext = cbContext;
+		boolean result = false;
+        try {
+            if (action.equals("uploadImage")) { 
+				this.uploadImage(args, callbackContext);
+                result = true;
+            }
+            else if (action.equals("setImageType")) { 
+				this.setImageType(args, callbackContext);
+                result = true;
+            }
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	callbackContext.error(getErrorObject(e.getMessage()));
+			result = false;
+        }
+		return result;
     }
 
     public void setImageType(JSONArray json, CallbackContext callbackContext){
@@ -88,7 +105,37 @@ public class BCOad extends CordovaPlugin {
 
     public void uploadImage(JSONArray json, CallbackContext callbackContext){
         mProgramming = true;
+        String filename = Tools.getData(json, "filename");
+        //Log.i(TAG, FW_CUSTOM_DIRECTORY);
+        //Log.i(TAG, Environment.getExternalStorageState());
+        //Log.i(TAG, Environment.getRootDirectory());
+        Log.i(TAG, Environment.getExternalStorageDirectory().getAbsolutePath());
+        //Log.i(TAG, Environment.getRootDirectory().getAbsolutePath());
+        String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filename;
+        
+        // Load binary file
+        try {
+          // Read the file raw into a buffer
+          InputStream stream;
+          
+          File f = new File(filepath);
+          stream = new FileInputStream(f);
+          
+          stream.read(mFileBuffer, 0, mFileBuffer.length);
+          stream.close();
+        } catch (IOException e) {
+          // Handle exceptions here
+//          return false;
+        }
 
+        // Show image info
+        mFileImgHdr.ver = Conversion.buildUint16(mFileBuffer[5], mFileBuffer[4]);
+        mFileImgHdr.len = Conversion.buildUint16(mFileBuffer[7], mFileBuffer[6]);
+        mFileImgHdr.imgType = ((mFileImgHdr.ver & 1) == 1) ? 'B' : 'A';
+        System.arraycopy(mFileBuffer, 8, mFileImgHdr.uid, 0, 4);
+
+        Log.i(TAG, mFileImgHdr.imgType.toString());
+        
         // Prepare image notification
         byte[] buf = new byte[OAD_IMG_HDR_SIZE + 2 + 2];
         buf[0] = Conversion.loUint16(mFileImgHdr.ver);
@@ -100,9 +147,9 @@ public class BCOad extends CordovaPlugin {
         // Send image notification
         //mCharIdentify.setValue(buf);
         //mLeService.writeCharacteristic(mCharIdentify);
-        JSONObject obj = new JSONObject();
+        //JSONObject obj = new JSONObject();
         // transfer buf
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, buf);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
 
@@ -113,12 +160,14 @@ public class BCOad extends CordovaPlugin {
         mTimer = null;
         mTimer = new Timer();
         mTimerTask = new ProgTimerTask(callbackContext);
-        mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
-    }
+        //mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
+        mTimer.schedule(mTimerTask, (long) 0.1);
+    }	
 
     private void onBlockTimer(CallbackContext callbackContext) {
 
-        if (mProgInfo.iBlocks < mProgInfo.nBlocks) {
+        //if (mProgInfo.iBlocks < mProgInfo.nBlocks) {
+        for (int ii = 0; ii < 4; ii++) {
             mProgramming = true;
 
             // Prepare block
@@ -129,35 +178,55 @@ public class BCOad extends CordovaPlugin {
             // Send block
             //mCharBlock.setValue(mOadBuffer);
             //boolean success = mLeService.writeCharacteristic(mCharBlock);
-            boolean success = true;
-            JSONObject obj = new JSONObject();
+
             // transfer mOadBuffer
-            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , mOadBuffer);
             pluginResult.setKeepCallback(true);
             callbackContext.sendPluginResult(pluginResult);
 
-            if (success) {
-                // Update stats
-                mProgInfo.iBlocks++;
-                mProgInfo.iBytes += OAD_BLOCK_SIZE;
-            } else {
-                // Check if the device has been prematurely disconnected
-                //if (BluetoothLeService.getBtGatt() == null)
-                //    mProgramming = false;
+            mProgInfo.iBlocks++;
+            mProgInfo.iBytes += OAD_BLOCK_SIZE;
+            if(mProgInfo.iBlocks == mProgInfo.nBlocks) {
+            	mProgramming = false;
             }
-        } else {
-            mProgramming = false;
+            else {
+                if (ii == 3){
+                	mTimer = null;
+                    mTimer = new Timer();
+                    mTimerTask = new ProgTimerTask(callbackContext);
+                    //mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
+                    mTimer.schedule(mTimerTask, (long) 0.09);
+                }
+            }
         }
         mProgInfo.iTimeElapsed += PKT_INTERVAL;
-
-        if (!mProgramming) {
-            // runOnUiThread(new Runnable() {
-            //         public void run() {
-            //             displayStats();
-            //             stopProgramming();
-            //         }
-            //     });
-        }
+        
+        float secondsPerBlock = (float) (0.09 / 4);
+        float secondsLeft = (float)(mProgInfo.nBlocks - mProgInfo.iBlocks) * secondsPerBlock;
+        float progress = ((mProgInfo.iBlocks * 100) / mProgInfo.nBlocks);
+        
+        JSONObject obj = new JSONObject();
+        try {
+			obj.put("inProgramming", mProgramming);
+			obj.put("secondsLeft", secondsLeft);
+	        obj.put("progress", progress);
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
+        pluginResult.setKeepCallback(true);
+        callbackContext.sendPluginResult(pluginResult);
+        
+//        if (!mProgramming) {
+//             runOnUiThread(new Runnable() {
+//                     public void run() {
+//                         displayStats();
+//                         stopProgramming();
+//                     }
+//                 });
+//        }
     }
 
     private void stopProgramming() {
@@ -234,5 +303,15 @@ public class BCOad extends CordovaPlugin {
             mTick = 0;
             nBlocks = (short) (mFileImgHdr.len / (OAD_BLOCK_SIZE / HAL_FLASH_WORD_SIZE));
         }
+    }
+    
+    private JSONObject getErrorObject(String message){
+    	JSONObject json = new JSONObject();
+    	try {
+			json.put("error", message);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    	return json;
     }
 }
