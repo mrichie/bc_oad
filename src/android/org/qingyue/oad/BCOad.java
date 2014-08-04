@@ -97,8 +97,7 @@ public class BCOad extends CordovaPlugin {
         mTargImgHdr.imgType = ((mTargImgHdr.ver & 1) == 1) ? 'B' : 'A';
         mTargImgHdr.len = Conversion.buildUint16(value[3], value[2]);
 
-        JSONObject obj = new JSONObject();
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
     }
@@ -106,11 +105,7 @@ public class BCOad extends CordovaPlugin {
     public void uploadImage(JSONArray json, CallbackContext callbackContext){
         mProgramming = true;
         String filename = Tools.getData(json, "filename");
-        //Log.i(TAG, FW_CUSTOM_DIRECTORY);
-        //Log.i(TAG, Environment.getExternalStorageState());
-        //Log.i(TAG, Environment.getRootDirectory());
         Log.i(TAG, Environment.getExternalStorageDirectory().getAbsolutePath());
-        //Log.i(TAG, Environment.getRootDirectory().getAbsolutePath());
         String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filename;
         
         // Load binary file
@@ -144,10 +139,15 @@ public class BCOad extends CordovaPlugin {
         buf[3] = Conversion.hiUint16(mFileImgHdr.len);
         System.arraycopy(mFileImgHdr.uid, 0, buf, 4, 4);
 
+        buf[OAD_IMG_HDR_SIZE + 0] = Conversion.loUint16((short)12);
+        buf[OAD_IMG_HDR_SIZE + 1] = Conversion.hiUint16((short)12);
+        buf[OAD_IMG_HDR_SIZE + 2] = Conversion.loUint16((short)15);
+        buf[OAD_IMG_HDR_SIZE + 1] = Conversion.hiUint16((short)15);
+        
         // Send image notification
         //mCharIdentify.setValue(buf);
         //mLeService.writeCharacteristic(mCharIdentify);
-        //JSONObject obj = new JSONObject();
+
         // transfer buf
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, buf);
         pluginResult.setKeepCallback(true);
@@ -162,22 +162,15 @@ public class BCOad extends CordovaPlugin {
         mTimerTask = new ProgTimerTask(callbackContext);
         //mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
         mTimer.schedule(mTimerTask, (long) 0.1);
-    }	
+    }
 
     private void onBlockTimer(CallbackContext callbackContext) {
-
-        //if (mProgInfo.iBlocks < mProgInfo.nBlocks) {
         for (int ii = 0; ii < 4; ii++) {
             mProgramming = true;
-
             // Prepare block
             mOadBuffer[0] = Conversion.loUint16(mProgInfo.iBlocks);
             mOadBuffer[1] = Conversion.hiUint16(mProgInfo.iBlocks);
             System.arraycopy(mFileBuffer, mProgInfo.iBytes, mOadBuffer, 2, OAD_BLOCK_SIZE);
-
-            // Send block
-            //mCharBlock.setValue(mOadBuffer);
-            //boolean success = mLeService.writeCharacteristic(mCharBlock);
 
             // transfer mOadBuffer
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , mOadBuffer);
@@ -185,22 +178,29 @@ public class BCOad extends CordovaPlugin {
             callbackContext.sendPluginResult(pluginResult);
 
             mProgInfo.iBlocks++;
+            short ib = mProgInfo.iBlocks;
+            short nb = mProgInfo.nBlocks;
             mProgInfo.iBytes += OAD_BLOCK_SIZE;
-            if(mProgInfo.iBlocks == mProgInfo.nBlocks) {
+            Log.i(TAG, "iBlocks :" + ib + " nBlocks : " + nb);
+            int iby = mProgInfo.iBytes;
+            int nby = mProgInfo.nBytes;
+            Log.i(TAG, "iBytes : " + iby + " nBytes : " + nby);
+            
+            if(ib == nb) {
             	mProgramming = false;
+            	mTimer = null;
             }
             else {
                 if (ii == 3){
                 	mTimer = null;
                     mTimer = new Timer();
                     mTimerTask = new ProgTimerTask(callbackContext);
-                    //mTimer.scheduleAtFixedRate(mTimerTask, 0, PKT_INTERVAL);
                     mTimer.schedule(mTimerTask, (long) 0.09);
                 }
             }
         }
         mProgInfo.iTimeElapsed += PKT_INTERVAL;
-        
+
         float secondsPerBlock = (float) (0.09 / 4);
         float secondsLeft = (float)(mProgInfo.nBlocks - mProgInfo.iBlocks) * secondsPerBlock;
         float progress = ((mProgInfo.iBlocks * 100) / mProgInfo.nBlocks);
@@ -218,15 +218,6 @@ public class BCOad extends CordovaPlugin {
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK , obj);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
-        
-//        if (!mProgramming) {
-//             runOnUiThread(new Runnable() {
-//                     public void run() {
-//                         displayStats();
-//                         stopProgramming();
-//                     }
-//                 });
-//        }
     }
 
     private void stopProgramming() {
@@ -291,6 +282,7 @@ public class BCOad extends CordovaPlugin {
 
     private class ProgInfo {
         int iBytes = 0; // Number of bytes programmed
+        int nBytes = 0;
         short iBlocks = 0; // Number of blocks programmed
         short nBlocks = 0; // Total number of blocks
         int iTimeElapsed = 0; // Time elapsed in milliseconds
@@ -302,6 +294,7 @@ public class BCOad extends CordovaPlugin {
             iTimeElapsed = 0;
             mTick = 0;
             nBlocks = (short) (mFileImgHdr.len / (OAD_BLOCK_SIZE / HAL_FLASH_WORD_SIZE));
+            nBytes = mFileImgHdr.len * HAL_FLASH_WORD_SIZE;
         }
     }
     
