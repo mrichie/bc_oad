@@ -63,27 +63,33 @@
             successFunc = this.writeSuccess;
             errorFunc = this.writeError;
             me = this;
-            me.getCharacteristicByUUID(me.imageNotifyUUID)[0].subscribe(function(data){
-                if(me.imgVersion == '0xFFFF'){
-                    imgHdr = new Uint16Array(data.value.value);
-                    imgType = imgHdr[0] & 0x01 ? 'B' : 'A';
-                    me.curImgType = imgType;
-                    //BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
-                    me.imgVersion = data.value.getHexString();
-                    cb(me.curImgType, me.imgVersion);
-                };
-            });
+	    notifyChar = me.getCharacteristicByUUID(me.imageNotifyUUID)[0];
+	    if(notifyChar){
+		notifyChar.subscribe(function(data){
+                    if(me.imgVersion == '0xFFFF'){
+			imgHdr = new Uint16Array(data.value.value);
+			imgType = imgHdr[0] & 0x01 ? 'B' : 'A';
+			me.curImgType = imgType;
+			//BC.OadManager.SetImageType(function(msg){console.log(msg)}, null, data.value.getHexString());
+			me.imgVersion = data.value.getHexString();
+			cb(me.curImgType, me.imgVersion);
+                    };
+		});
 
-            me.getCharacteristicByUUID(me.imageNotifyUUID)[0].write('hex',
-                                                                        '0x00',
-                                                                        successFunc,
-                                                                        errorFunc);
-            window.setTimeout(function(){
-                me.getCharacteristicByUUID(me.imageNotifyUUID)[0].write('hex',
-                                                                            '0x01',
-                                                                            successFunc,
-                                                                            errorFunc);
-            }, 1500);
+		notifyChar.write('hex',
+				 '0x00',
+				 successFunc,
+				 errorFunc);
+		
+		window.setTimeout(function(){
+                    notifyChar.write('hex',
+                                     '0x01',
+                                     successFunc,
+                                     errorFunc);
+		}, 1500);
+	    }else{
+		errorFunc();
+	    }
         },
 
         uploadImage: function(device, successCallBack, errorCallBack){

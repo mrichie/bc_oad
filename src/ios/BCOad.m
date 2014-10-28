@@ -138,13 +138,14 @@
     NSLog(@"secondsLeft: %f", secondsLeft);
     NSLog(@"inProgramming %hhd", self.inProgramming);
 
-    NSString *progress = [NSString stringWithFormat:@"%0.1f%%",(float)((float)self.iBlocks / (float)self.nBlocks) * 100.0f];
+    NSString *progress = [NSString stringWithFormat:@"%0.1f%",(float)((float)self.iBlocks / (float)self.nBlocks) * 100.0f];
     NSString *remaining = [NSString stringWithFormat:@"Time remaining : %d:%02d",(int)(secondsLeft / 60),(int)secondsLeft - (int)(secondsLeft / 60) * (int)60];
     NSLog(@"progress : %@", progress);
     NSLog(@"remaining: %@", remaining);
 
     NSMutableDictionary *jsDict = [[NSMutableDictionary alloc] init];
     [jsDict setValue:[NSNumber numberWithFloat:secondsLeft] forKey:@"secondsLeft"];
+    [jsDict setValue:progress forKey:@"progress"];
     [jsDict setValue:[NSNumber numberWithFloat:self.inProgramming] forKey:@"inProgramming"];
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:jsDict];
     [pluginResult setKeepCallbackAsBool:TRUE];
