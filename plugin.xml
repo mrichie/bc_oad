@@ -26,6 +26,7 @@
 
         <source-file src="src/android/org/qingyue/oad/BCOad.java" target-dir="src/org/qingyue/oad" />
         <source-file src="src/android/org/qingyue/oad/utils/Conversion.java" target-dir="src/org/qingyue/oad/utils" />
+	<source-file src="src/android/org/qingyue/oad/utils/Tools.java" target-dir="src/org/qingyue/oad/utils" />
 
     </platform>
 
