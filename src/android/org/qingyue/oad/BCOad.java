@@ -217,7 +217,6 @@ public class BCOad extends CordovaPlugin {
             
             if(ib == nb) {
             	mProgramming = false;
-            	mTimer = null;
             }
             else {
 //                if (ii == 3){

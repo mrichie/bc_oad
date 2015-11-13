@@ -176,5 +176,20 @@ var oad = {
         cordova.exec(callback, errorFunc, "BCOad", "addEventListener", [{"eventName": eventName}]);
     }
 };
+
+ArrayBuffer.prototype.getHexString = function(){
+    var length = this.byteLength;
+    var dv = new DataView(this);
+    var result = "";
+    for (var i= 0; i < length; i++) {
+        if(dv.getUint8(i) < 16){
+            result += '0' + dv.getUint8(i).toString(16);
+        }else{
+            result += dv.getUint8(i).toString(16);
+        }
+    }
+    return result;
+};
+
 module.exports = oad;
 
