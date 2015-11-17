@@ -35,12 +35,13 @@
 @property BOOL inProgramming;
 @property BOOL start;
 @property uint16_t imgVersion;
+@property NSTimer* epochTimer;
 
 -(void) programmingTimerTick:(NSTimer *)timer;
 
 -(NSMutableArray *) findFWFiles;
 
 -(BOOL) isCorrectImage;
-
+-(void) stopProgramming;
 @end
 

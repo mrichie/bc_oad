@@ -85,7 +85,7 @@
 
     NSMutableDictionary *myDictionary = [[NSMutableDictionary alloc] init];
     [myDictionary setObject:command forKey:@"command"];
-    [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:NO];
+    _epochTimer = [NSTimer scheduledTimerWithTimeInterval:0.058 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:YES];
 
 }
 
@@ -103,9 +103,11 @@
 
     //Prepare Block
     uint8_t requestData[2 + OAD_BLOCK_SIZE];
-
-    // This block is run 4 times, this is needed to get CoreBluetooth to send consequetive packets in the same connection interval.
-    for (int ii = 0; ii < 4; ii++) {
+    if (self.iBlocks < self.nBlocks) {
+        self.inProgramming = YES;
+//    }
+//    // This block is run 4 times, this is needed to get CoreBluetooth to send consequetive packets in the same connection interval.
+//    for (int ii = 0; ii < 4; ii++) {
 
         requestData[0] = LO_UINT16(self.iBlocks);
         requestData[1] = HI_UINT16(self.iBlocks);
@@ -120,28 +122,31 @@
 
         self.iBlocks++;
         self.iBytes += OAD_BLOCK_SIZE;
-
+        NSLog(@"nBlock %d iBlock %d", self.nBlocks, self.iBlocks);
+//        NSLog(jsdata);
         if(self.iBlocks == self.nBlocks) {
             self.inProgramming = NO;
         }
         else {
-            NSMutableDictionary *myDictionary = [[NSMutableDictionary alloc] init];
-            [myDictionary setObject:command forKey:@"command"];
-            if (ii == 3)[NSTimer scheduledTimerWithTimeInterval:0.09 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:NO];
+//            NSMutableDictionary *myDictionary = [[NSMutableDictionary alloc] init];
+//            [myDictionary setObject:command forKey:@"command"];
+//            if (ii == 3)[NSTimer scheduledTimerWithTimeInterval:0.09 target:self selector:@selector(programmingTimerTick:) userInfo:myDictionary repeats:NO];
         }
+    }else{
+        self.inProgramming = NO;
     }
 
-    float secondsPerBlock = 0.09 / 4;
+    float secondsPerBlock = 0.058; //0.09 / 4;
     float secondsLeft = (float)(self.nBlocks - self.iBlocks) * secondsPerBlock;
 
-    NSLog(@"secondsPerBlock : %f", secondsPerBlock);
+//    NSLog(@"secondsPerBlock : %f", secondsPerBlock);
     NSLog(@"secondsLeft: %f", secondsLeft);
-    NSLog(@"inProgramming %hhd", self.inProgramming);
+//    NSLog(@"inProgramming %hhd", self.inProgramming);
 
     NSString *progress = [NSString stringWithFormat:@"%0.1f%",(float)((float)self.iBlocks / (float)self.nBlocks) * 100.0f];
     NSString *remaining = [NSString stringWithFormat:@"Time remaining : %d:%02d",(int)(secondsLeft / 60),(int)secondsLeft - (int)(secondsLeft / 60) * (int)60];
-    NSLog(@"progress : %@", progress);
-    NSLog(@"remaining: %@", remaining);
+//    NSLog(@"progress : %@", progress);
+//    NSLog(@"remaining: %@", remaining);
 
     NSMutableDictionary *jsDict = [[NSMutableDictionary alloc] init];
     [jsDict setValue:[NSNumber numberWithFloat:secondsLeft] forKey:@"secondsLeft"];
@@ -150,7 +155,9 @@
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:jsDict];
     [pluginResult setKeepCallbackAsBool:TRUE];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-
+    if (!self.inProgramming){
+        [self stopProgramming];
+    }
 }
 
 -(NSMutableArray *) findFWFiles {
@@ -251,6 +258,11 @@
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+-(void) stopProgramming{
+    [_epochTimer invalidate];
+    _epochTimer = nil;
 }
 
 # pragma mark -
